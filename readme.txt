@@ -69,10 +69,11 @@ To run the MapR Streams Java consumer to see what was published :
 java -cp mapr-sparkml-streaming-uber-1.0.jar:`mapr classpath` com.streamskafka.uber.MsgConsumer /user/user01/stream:ubers
 
 
-Step 4:  Run the Spark Consumer Producer with the topic to read (ubers) from and write to (uberp):
+Step 4:  Run the Spark Consumer Producer with the arguments: path to model, subscribe topic, publish topic :
 (in separate consoles if you want to run at the same time)
 
-spark-submit --class com.sparkkafka.uber.SparkKafkaConsumerProducer --master local[2] mapr-sparkml-streaming-uber-1.0.jar  /user/user01/stream:ubers /user/user01/stream:uberp
+spark-submit --class com.sparkkafka.uber.SparkKafkaConsumerProducer --master local[2] \
+ mapr-sparkml-streaming-uber-1.0.jar /user/user01/data/savemodel  /user/user01/stream:ubers /user/user01/stream:uberp
 
 ____________________________________________________________________
 

@@ -24,6 +24,23 @@ import org.apache.spark.ml.clustering.KMeansModel
 
 import org.apache.spark.rdd.RDD
 
+/**
+ * Consumes messages from a topic in MapR Streams using the Kafka interface, 
+ * enriches the message with  the k-means model cluster id and publishs the result in json format
+ * to another topic  
+ * Usage: SparkKafkaConsumerProducer  <model> <topicssubscribe> <topicspublish>
+ *   
+ *   <model>  is the path to the saved model
+ *   <topics> is a  topic to consume from
+ *   <topicp> is a  topic to publish to 
+ * Example:
+ *    $  spark-submit --class com.sparkkafka.uber.SparkKafkaConsumerProducer --master local[2] \
+ * mapr-sparkml-streaming-uber-1.0.jar /user/user01/data/savemodel  /user/user01/stream:ubers /user/user01/stream:uberp
+ *    
+ *    for more information
+ *    http://maprdocs.mapr.com/home/Spark/Spark_IntegrateMapRStreams_Consume.html
+ */
+
 object SparkKafkaConsumerProducer extends Serializable {
 
   import org.apache.spark.streaming.kafka.producer._
@@ -36,13 +53,13 @@ object SparkKafkaConsumerProducer extends Serializable {
   }
 
   def main(args: Array[String]): Unit = {
-    if (args.length < 1) {
-      throw new IllegalArgumentException("You must specify the topics, for example  /user/user01/stream:ubers /user/user01/stream:uberp ")
+    if (args.length < 3) {
+      throw new IllegalArgumentException("You must specify the model path, subscribe topic and publish topic. For example /user/user01/data/savemodel /user/user01/stream:ubers /user/user01/stream:uberp ")
     }
 
-    val Array(topics, topicp) = args
-    System.out.println("Subscribed to : " + topics)
-
+    val Array(modelpath , topics, topicp) = args
+    System.out.println ("Use model " +  modelpath + " Subscribe to : " + topics + " Publish to: " + topicp )
+     
     val brokers = "maprdemo:9092" // not needed for MapR Streams, needed for Kafka
     val groupId = "sparkApplication"
     val batchInterval = "2"
@@ -69,7 +86,7 @@ object SparkKafkaConsumerProducer extends Serializable {
       "spark.streaming.kafka.consumer.poll.ms" -> "8192"
     )
     // load model for getting clusters
-    val model = KMeansModel.load("/user/user01/data/savemodel")
+    val model = KMeansModel.load(modelpath)
     // print out cluster centers 
     model.clusterCenters.foreach(println)
 
@@ -107,6 +124,8 @@ object SparkKafkaConsumerProducer extends Serializable {
 
         //convert results to JSON string to send to topic 
         val res = spark.sql("select dt, lat, lon, base, prediction as cluster from uber ")
+        res.show
+        
         val tRDD: org.apache.spark.sql.Dataset[String] = res.toJSON
 
         val temp: RDD[String] = tRDD.rdd
