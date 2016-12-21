@@ -105,7 +105,8 @@ Then you can skip to Step 5
 
 _________________________________________________________________________________
 
-Other examples included: 
+Other examples included:  
+from https://github.com/mapr/spark/blob/2.0.1-mapr-1611/examples/src/main/scala/org/apache/spark/examples/streaming/
 
 Spark Streaming Consuming from MapR-Streams:
 
