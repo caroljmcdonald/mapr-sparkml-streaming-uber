@@ -21,7 +21,30 @@ Copy the data file from the project data folder to the sandbox using scp to this
 
 For Virtualbox use:  $ scp -P 2222 data/uber.csv  user01@127.0.0.1:/user/user01/data/. 
 
-To Run the Spark k-means program which will create and save the machine learning model: 
+This example runs on MapR 5.2 with Spark 2.0.1 . If running on the sandbox you need to upgrade to MEP 2.0,  Spark  2.0.1 
+http://maprdocs.mapr.com/home/UpgradeGuide/UpgradingEcoPacks.html
+http://maprdocs.mapr.com/home/Spark/Spark_IntegrateMapRStreams.html
+
+By default, Spark classpath doesn't contain  "spark-streaming-kafka-0-9_2.11.jar".  
+There are 3 ways:
+1. Build your application with spark-streaming-kafka-0-9_2.11.jar as dependencies. 
+2. Manually download spark-streaming-kafka-0-9_2.11.jar and put to SparkHome/jars folder.
+3. Manually download spark-streaming-kafka-0-9_2.11.jar and  pass path to spark submit script with --jars option
+
+Step 0: Create the topics to read from (ubers) and write to (uberp)  in MapR streams:
+
+maprcli stream create -path /user/user01/stream -produceperm p -consumeperm p -topicperm p
+maprcli stream topic create -path /user/user01/stream -topic ubers -partitions 3
+maprcli stream topic create -path /user/user01/stream -topic uberp -partitions 3
+
+to get info on the stream:
+maprcli stream topic info -path /user/user01/stream -topic sensor ubers
+to delete a topic after using :
+maprcli stream topic delete -path /user/user01/stream -topic sensor ubers
+
+____________________________________________________________________
+
+Step 1:  Run the Spark k-means program which will create and save the machine learning model: 
 
 spark-submit --class com.sparkml.uber.ClusterUber --master local[2]  mapr-sparkml-streaming-uber-1.0.jar 
 
@@ -33,34 +56,39 @@ There is also a notebook file, in the notebooks directory, which you can import 
     
  - For Yarn you should change --master parameter to yarn-client - "--master yarn-client"
 
-______________________________________________________
+____________________________________________________________________
 
-After creating and saving the model you can run the Streaming code:
+After creating and saving the k-means model you can run the Streaming code:
 
-- Create the topics to read from and write to in MapR streams:
-
-maprcli stream create -path /user/user01/stream -produceperm p -consumeperm p -topicperm p
-maprcli stream topic create -path /user/user01/stream -topic ubers -partitions 3
-maprcli stream topic create -path /user/user01/stream -topic uberp -partitions 3
-
-To run the MapR Streams Java producer to produce messages, run the Java producer with the topic and data file arguments:
+Step 2: Run the MapR Streams Java producer to produce messages, run the Java producer with the topic (ubers) and data file arguments (uber.csv):
 
 java -cp mapr-sparkml-streaming-uber-1.0.jar:`mapr classpath` com.streamskafka.uber.MsgProducer /user/user01/stream:ubers /user/user01/data/uber.csv
 
-To Run the Spark Consumer Producer (in separate consoles if you want to run at the same time) run the spark consumer with the topic to read from and write to:
+To run the MapR Streams Java consumer to see what was published :
+
+java -cp mapr-sparkml-streaming-uber-1.0.jar:`mapr classpath` com.streamskafka.uber.MsgConsumer /user/user01/stream:ubers
+
+
+Step 4:  Run the Spark Consumer Producer with the topic to read (ubers) from and write to (uberp):
+(in separate consoles if you want to run at the same time)
 
 spark-submit --class com.sparkkafka.uber.SparkKafkaConsumerProducer --master local[2] mapr-sparkml-streaming-uber-1.0.jar  /user/user01/stream:ubers /user/user01/stream:uberp
 
-To Run the Spark Consumer which consumes the machine learning enriched methods run the spark consumer with the topic to read from and write to:
+____________________________________________________________________
+
+
+Step 5: Run the Spark Consumer which consumes and analyzes the machine learning enriched methods with the topic to read from (uberp):
 
 spark-submit --class com.sparkkafka.uber.SparkKafkaConsumer --master local[2] mapr-sparkml-streaming-uber-1.0.jar /user/user01/stream:uberp
 
 
-To run the MapR Streams Java consumer, run the Java consumer with the topic to read from:
+To run the MapR Streams Java consumer  with the topic to read from (uberp):
 
 java -cp mapr-sparkml-streaming-uber-1.0.jar:`mapr classpath` com.streamskafka.uber.MsgConsumer /user/user01/stream:uberp 
 
-_________________________________________________________________________
+_________________________________________________________________________________  
+
+Alternative Step 1: 
 
 If you want to skip the machine learning and publishing part, the JSON results are in a file in the directory data/ubertripclusters.json
 scp this file to /user/user01/data/ubertripclusters.json
@@ -69,19 +97,23 @@ Then run the MapR Streams Java producer to produce messages with the Java produc
 
 java -cp mapr-sparkml-streaming-uber-1.0.jar:`mapr classpath` com.streamskafka.uber.MsgProducer /user/user01/stream:uberp /user/user01/data/ubertripclusters.json
 
-The you can  Run the Spark Consumer which consumes the machine learning enriched methods, run the spark consumer with the topic to read from and write to:
+To run the MapR Streams Java consumer  with the topic to read from (uberp):
 
-spark-submit --class com.sparkkafka.uber.SparkKafkaConsumer --master local[2] mapr-sparkml-streaming-uber-1.0.jar /user/user01/stream:uberp
+java -cp mapr-sparkml-streaming-uber-1.0.jar:`mapr classpath` com.streamskafka.uber.MsgConsumer /user/user01/stream:uberp 
+
+Then you can skip to Step 5
+
+_________________________________________________________________________________
+
+Other examples included: 
+
+Spark Streaming Consuming from MapR-Streams:
 
 /opt/mapr/spark/spark-2.0.1/bin/spark-submit --class com.sparkkafka.uber.V09DirectKafkaWordCount --master local[2] mapr-sparkml-streaming-uber-1.0.jar /user/user01/stream:ubers
 
+Spark Streaming  publishing to  MapR-Streams:
 spark-submit --class com.sparkkafka.uber.KafkaProducerExample  --master local[2] mapr-sparkml-streaming-uber-1.0.jar /user/user01/stream:ubert
 
-maprcli stream topic delete -path /user/user01/stream -topic sensor ubers
 
 
-By default, Spark classpath doesn't contain  "spark-streaming-kafka-0-9_2.11.jar".  
-There are 3 ways:
-1. Build your application with spark-streaming-kafka-0-9_2.11.jar as dependencies. 
-2. Manually download spark-streaming-kafka-0-9_2.11.jar and put to SparkHome/jars folder.
-3. Manually download spark-streaming-kafka-0-9_2.11.jar and  pass path to spark submit script with --jars option
+
