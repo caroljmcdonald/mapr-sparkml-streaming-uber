@@ -25,11 +25,14 @@ This example runs on MapR 5.2 with Spark 2.0.1 . If running on the sandbox you n
 http://maprdocs.mapr.com/home/UpgradeGuide/UpgradingEcoPacks.html
 http://maprdocs.mapr.com/home/Spark/Spark_IntegrateMapRStreams.html
 
-By default, Spark classpath doesn't contain  "spark-streaming-kafka-0-9_2.11.jar".  
+By default, Spark classpath doesn't contain  spark-streaming-kafka-0-9_2.11.jar and spark-streaming-kafka-producer_2.11-2.0.1-mapr-1611.jar 
+which you can get here:  
+http://repository.mapr.com/nexus/content/groups/mapr-public/org/apache/spark/spark-streaming-kafka-producer_2.11/2.0.1-mapr-1611/spark-streaming-kafka-producer_2.11-2.0.1-mapr-1611.jar
+http://repository.mapr.com/nexus/content/groups/mapr-public/org/apache/spark/spark-streaming-kafka-0-9_2.11/2.0.1-mapr-1611/spark-streaming-kafka-0-9_2.11-2.0.1-mapr-1611.jar
 There are 3 ways:
 1. Build your application with spark-streaming-kafka-0-9_2.11.jar as dependencies. 
-2. Manually download spark-streaming-kafka-0-9_2.11.jar and put to SparkHome/jars folder.
-3. Manually download spark-streaming-kafka-0-9_2.11.jar and  pass path to spark submit script with --jars option
+2. Manually download the jars and put to SparkHome/jars folder.
+3. Manually download the jars and pass the path to spark submit script with --jars option
 
 Step 0: Create the topics to read from (ubers) and write to (uberp)  in MapR streams:
 
@@ -37,10 +40,8 @@ maprcli stream create -path /user/user01/stream -produceperm p -consumeperm p -t
 maprcli stream topic create -path /user/user01/stream -topic ubers -partitions 3
 maprcli stream topic create -path /user/user01/stream -topic uberp -partitions 3
 
-to get info on the stream:
-maprcli stream topic info -path /user/user01/stream -topic sensor ubers
-to delete a topic after using :
-maprcli stream topic delete -path /user/user01/stream -topic sensor ubers
+to get info on the ubers topic :
+maprcli stream topic info -path /user/user01/stream -topic ubers
 
 ____________________________________________________________________
 
@@ -105,6 +106,9 @@ java -cp mapr-sparkml-streaming-uber-1.0.jar:`mapr classpath` com.streamskafka.u
 Then you can skip to Step 5
 
 _________________________________________________________________________________
+
+to delete the ubers topic after using :
+maprcli stream topic delete -path /user/user01/stream -topic ubers
 
 Other examples included:  
 from https://github.com/mapr/spark/blob/2.0.1-mapr-1611/examples/src/main/scala/org/apache/spark/examples/streaming/
