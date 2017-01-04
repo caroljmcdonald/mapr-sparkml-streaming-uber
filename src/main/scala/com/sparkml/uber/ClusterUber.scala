@@ -61,7 +61,7 @@ object ClusterUber {
      * uncomment below for various functionality:
     */
     // to save the model 
-    // model.write.overwrite().save("/user/user01/data/savemodel")
+    model.write.overwrite().save("/user/user01/data/savemodel")
     // model can be  re-loaded like this
     // val sameModel = KMeansModel.load("/user/user01/data/savemodel")
     //  
