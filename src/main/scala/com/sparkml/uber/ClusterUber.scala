@@ -2,18 +2,21 @@ package com.sparkml.uber
 
 import org.apache.spark._
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.types._
 import org.apache.spark.sql.functions._
+import org.apache.spark.sql.types._
 import org.apache.spark.sql._
-
+import org.apache.spark.sql.Dataset
+import org.apache.spark.sql.types.TimestampType
 import org.apache.spark.ml.feature.VectorAssembler
 import org.apache.spark.ml.clustering.KMeans
 
 object ClusterUber {
+  
+  case class Uber(dt: String, lat: Double, lon: Double, base: String) extends Serializable
 
   def main(args: Array[String]) {
 
-    val spark = SparkSession.builder().appName("ClusterUber").getOrCreate()
+    val spark: SparkSession = SparkSession.builder().appName("uber").getOrCreate()
 
     import spark.implicits._
 
@@ -23,8 +26,9 @@ object ClusterUber {
       StructField("lon", DoubleType, true),
       StructField("base", StringType, true)
     ))
-    // Spark 2.0
-    val df = spark.read.option("header", "false").schema(schema).csv("/user/user01/data/uber.csv")
+
+    // Spark 2.1
+    val df: Dataset[Uber] = spark.read.option("inferSchema", "false").schema(schema).csv("/user/user01/data/uber.csv").as[Uber]
 
     df.cache
     df.show
@@ -36,7 +40,7 @@ object ClusterUber {
     val Array(trainingData, testData) = df2.randomSplit(Array(0.7, 0.3), 5043)
 
     // increase the iterations if running on a cluster (this runs on a 1 node sandbox)
-    val kmeans = new KMeans().setK(8).setFeaturesCol("features").setMaxIter(1)
+    val kmeans = new KMeans().setK(20).setFeaturesCol("features").setMaxIter(5)
     val model = kmeans.fit(trainingData)
     println("Final Centers: ")
     model.clusterCenters.foreach(println)
@@ -66,8 +70,8 @@ object ClusterUber {
     // val sameModel = KMeansModel.load("/user/user01/data/savemodel")
     //  
     // to save the categories dataframe as json data
-    // val res = spark.sql("select dt, lat, lon, base, prediction as cluster FROM uber order by dt")   
-    // res.write.format("json").save("/user/user01/uber")
+    val res = spark.sql("select dt, lat, lon, base, prediction as cid FROM uber order by dt")   
+    res.write.format("json").save("/user/user01/data/uber.json")
   }
 }
 

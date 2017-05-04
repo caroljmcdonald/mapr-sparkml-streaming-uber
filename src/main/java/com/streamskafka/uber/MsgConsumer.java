@@ -33,13 +33,13 @@ public class MsgConsumer {
         long pollTimeOut = 1000;
         long waitTime = 30 * 1000;  // loop for while loop 30 seconds
         long numberOfMsgsReceived = 0;
-        while (waitTime > 0) {
+        while (true) {
             // Request unread messages from the topic.
             ConsumerRecords<String, String> msg = consumer.poll(pollTimeOut);
             if (msg.count() == 0) {
-                System.out.println("No messages after 1 second wait.");
+              //  System.out.println("No messages after 1 second wait.");
             } else {
-                System.out.println("Read " + msg.count() + " messages");
+              //  System.out.println("Read " + msg.count() + " messages");
                 numberOfMsgsReceived += msg.count();
 
                 // Iterate through returned records, extract the value
@@ -47,15 +47,15 @@ public class MsgConsumer {
                 Iterator<ConsumerRecord<String, String>> iter = msg.iterator();
                 while (iter.hasNext()) {
                     ConsumerRecord<String, String> record = iter.next();
-                    System.out.println("Consuming " + record.toString());
+                    System.out.println(record.value());
 
                 }
             }
             waitTime = waitTime - 1000; // decrease time for loop
         }
-        consumer.close();
-        System.out.println("Total number of messages received: " + numberOfMsgsReceived);
-        System.out.println("All done.");
+        //consumer.close();
+      //  System.out.println("Total number of messages received: " + numberOfMsgsReceived);
+      //  System.out.println("All done.");
 
     }
 

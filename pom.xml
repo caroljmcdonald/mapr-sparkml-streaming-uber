@@ -18,10 +18,12 @@
         <scala.binary.version>2.11</scala.binary.version>
 
         <!-- version = <spark_version>-mapr-<mapr_eco_version> -->
-        <maprspark.version>2.0.1-mapr-1611</maprspark.version>
-        <maprstreams.version>0.9.0.0-mapr-1611-streams-5.2.0</maprstreams.version>
+        <maprspark.version>2.1.0-mapr-1703</maprspark.version>
+        <maprstreams.version>0.9.0.0-mapr-1703-streams-5.2.1</maprstreams.version>
 
+        <mapr.version>1.1.1-mapr-1602-m7-5.2.0</mapr.version>
 
+        <hbasespark.version>1.1.8-mapr-1703</hbasespark.version>
 
     </properties>  
 
@@ -58,19 +60,22 @@
             <version>${scala.version}</version>
             <scope>provided</scope>
         </dependency>
- 
         <dependency>
-            <groupId>org.apache.spark</groupId>
-            <artifactId>spark-core_${scala.binary.version}</artifactId>
-            <version>${maprspark.version}</version>
-            <scope>provided</scope>
+            <groupId>org.apache.hbase</groupId>
+            <artifactId>hbase-server</artifactId>
+            <version>${hbasespark.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hbase</groupId>
+            <artifactId>hbase-spark</artifactId>
+            <version>${hbasespark.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-streaming_${scala.binary.version}</artifactId>
             <version>${maprspark.version}</version>
-
         </dependency>
+
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-mllib_${scala.binary.version}</artifactId>
@@ -94,7 +99,6 @@
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-streaming-kafka-0-9_${scala.binary.version}</artifactId>
             <version>${maprspark.version}</version>
-
         </dependency>
   
 
@@ -102,17 +106,20 @@
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-streaming-kafka-producer_${scala.binary.version}</artifactId>
             <version>${maprspark.version}</version>
-  
         </dependency>
 
         <dependency>
             <groupId>com.mapr.streams</groupId>
             <artifactId>mapr-streams</artifactId>
-            <version>5.2.0-mapr</version>
-    
+            <version>5.2.1-mapr</version>
         </dependency>
 
-	
+        <dependency>
+            <groupId>com.mapr.db</groupId>
+            <artifactId>maprdb-spark</artifactId>
+            <version>5.2.1-mapr</version>
+        </dependency>
+        
     </dependencies>
    
    

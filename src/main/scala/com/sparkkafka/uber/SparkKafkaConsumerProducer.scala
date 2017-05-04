@@ -25,18 +25,18 @@ import org.apache.spark.ml.clustering.KMeansModel
 import org.apache.spark.rdd.RDD
 
 /**
- * Consumes messages from a topic in MapR Streams using the Kafka interface, 
+ * Consumes messages from a topic in MapR Streams using the Kafka interface,
  * enriches the message with  the k-means model cluster id and publishs the result in json format
- * to another topic  
+ * to another topic
  * Usage: SparkKafkaConsumerProducer  <model> <topicssubscribe> <topicspublish>
- *   
+ *
  *   <model>  is the path to the saved model
  *   <topics> is a  topic to consume from
- *   <topicp> is a  topic to publish to 
+ *   <topicp> is a  topic to publish to
  * Example:
  *    $  spark-submit --class com.sparkkafka.uber.SparkKafkaConsumerProducer --master local[2] \
  * mapr-sparkml-streaming-uber-1.0.jar /user/user01/data/savemodel  /user/user01/stream:ubers /user/user01/stream:uberp
- *    
+ *
  *    for more information
  *    http://maprdocs.mapr.com/home/Spark/Spark_IntegrateMapRStreams_Consume.html
  */
@@ -46,6 +46,13 @@ object SparkKafkaConsumerProducer extends Serializable {
   import org.apache.spark.streaming.kafka.producer._
   // schema for uber data   
   case class Uber(dt: String, lat: Double, lon: Double, base: String) extends Serializable
+  case class Center(cid: Integer, clat: Double, clon: Double) extends Serializable
+  val schema = StructType(Array(
+    StructField("dt", TimestampType, true),
+    StructField("lat", DoubleType, true),
+    StructField("lon", DoubleType, true),
+    StructField("base", StringType, true)
+  ))
 
   def parseUber(str: String): Uber = {
     val p = str.split(",")
@@ -57,17 +64,20 @@ object SparkKafkaConsumerProducer extends Serializable {
       throw new IllegalArgumentException("You must specify the model path, subscribe topic and publish topic. For example /user/user01/data/savemodel /user/user01/stream:ubers /user/user01/stream:uberp ")
     }
 
-    val Array(modelpath , topics, topicp) = args
-    System.out.println ("Use model " +  modelpath + " Subscribe to : " + topics + " Publish to: " + topicp )
-     
+    val Array(modelpath, topics, topicp) = args
+    System.out.println("Use model " + modelpath + " Subscribe to : " + topics + " Publish to: " + topicp)
+
     val brokers = "maprdemo:9092" // not needed for MapR Streams, needed for Kafka
     val groupId = "sparkApplication"
     val batchInterval = "2"
     val pollTimeout = "10000"
 
     val sparkConf = new SparkConf().setAppName("UberStream")
+    val spark = SparkSession.builder().appName("ClusterUber").getOrCreate()
+    val ssc = new StreamingContext(spark.sparkContext, Seconds(batchInterval.toInt))
 
-    val ssc = new StreamingContext(sparkConf, Seconds(batchInterval.toInt))
+    import spark.implicits._
+
     val producerConf = new ProducerConf(
       bootstrapServers = brokers.split(",").toList
     )
@@ -85,10 +95,20 @@ object SparkKafkaConsumerProducer extends Serializable {
       "spark.kafka.poll.time" -> pollTimeout,
       "spark.streaming.kafka.consumer.poll.ms" -> "8192"
     )
+
     // load model for getting clusters
     val model = KMeansModel.load(modelpath)
     // print out cluster centers 
     model.clusterCenters.foreach(println)
+    // create a dataframe with cluster centers to join with stream
+    var ac = new Array[Center](20)
+    var index: Int = 0
+    model.clusterCenters.foreach(x => {
+      ac(index) = Center(index, x(0), x(1));
+      index += 1;
+    })
+    val cc: RDD[Center] = spark.sparkContext.parallelize(ac)
+    val ccdf = cc.toDF()
 
     val consumerStrategy = ConsumerStrategies.Subscribe[String, String](topicsSet, kafkaParams)
     val messagesDStream = KafkaUtils.createDirectStream[String, String](
@@ -103,10 +123,9 @@ object SparkKafkaConsumerProducer extends Serializable {
       if (!rdd.isEmpty) {
         val count = rdd.count
         println("count received " + count)
+        // Get the singleton instance of SparkSession
         val spark = SparkSession.builder.config(rdd.sparkContext.getConf).getOrCreate()
         import spark.implicits._
-        import org.apache.spark.sql.functions._
-        import org.apache.spark.sql.types._
 
         val df = rdd.map(parseUber).toDF()
         // Display the top 20 rows of DataFrame
@@ -117,15 +136,19 @@ object SparkKafkaConsumerProducer extends Serializable {
         val featureCols = Array("lat", "lon")
         val assembler = new VectorAssembler().setInputCols(featureCols).setOutputCol("features")
         val df2 = assembler.transform(df)
+        
         // get cluster categories from  model
         val categories = model.transform(df2)
         categories.show
         categories.createOrReplaceTempView("uber")
 
-        //convert results to JSON string to send to topic 
-        val res = spark.sql("select dt, lat, lon, base, prediction as cluster from uber ")
+        // select values to join with cluster centers
+        // convert results to JSON string to send to topic 
+
+        val clust = categories.select($"dt", $"lat", $"lon", $"base", $"prediction".alias("cid")).orderBy($"dt")
+        val res = clust.join(ccdf, Seq("cid")).orderBy($"dt")
         res.show
-        
+
         val tRDD: org.apache.spark.sql.Dataset[String] = res.toJSON
 
         val temp: RDD[String] = tRDD.rdd
