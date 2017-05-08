@@ -122,6 +122,10 @@ Run the code to Read from MapR Streams and write to MapR-DB HBAse
 spark-submit --class com.sparkkafka.uber.SparkKafkaConsumerWriteHBase --master local[2] \
 mapr-sparkml-streaming-uber-1.0-jar-with-dependencies.jar /user/user01/stream:uberp  "/user/user01/db/uber"
 
+start the hbase shell and scan to see results: 
+hbase shell
+scan '/user/user01/db/uber' , {'LIMIT' => 5}
+
 ____________________________________________________________________
 
 
