@@ -15,7 +15,7 @@ public class MsgProducer {
     // Declare a new producer
     public static KafkaProducer producer;
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws Exception {
 
         // Set the default stream and topic to publish to.
         String topic = "/user/user01/stream:ubers";
@@ -43,6 +43,7 @@ public class MsgProducer {
             producer.send(rec);
             System.out.println("Sent message: " + line);
             line = reader.readLine();
+             Thread.sleep(600l);
 
         }
 

@@ -34,8 +34,6 @@ object SparkHBaseReadDF {
     val spark = SparkSession.builder().appName("Uber").getOrCreate()
     import spark.implicits._
 
-    val tableName = "/user/user01/db/uber"
-
     val sqlContext = new SQLContext(spark.sparkContext)
 
     def withCatalog(cat: String): DataFrame = {
@@ -50,10 +48,10 @@ object SparkHBaseReadDF {
     println("show dataframe")
     df.show
     df.schema
-    println("show for clusters with ID > 9 ")
-    df.filter($"key" >= "9_")
+    println("show for clusters with ID   < 11 ")
+    df.filter($"key" <= "11")
       .select($"key", $"lat", $"lon").show
-      
+
   }
 
 }

@@ -10,6 +10,8 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.sql._
 import org.apache.hadoop.hbase.HBaseConfiguration
 import org.apache.hadoop.hbase.TableName
+import org.apache.spark.streaming.{ Seconds, StreamingContext, Time }
+import org.apache.spark.rdd.RDD
 
 import org.apache.hadoop.hbase.client.Put
 
@@ -35,7 +37,7 @@ object SparkKafkaConsumerWriteHBase {
   def convertToPut(uber: String): (Put) = {
     val uberp = JSONUtil.fromJson[UberC](uber)
     // create a composite row key: uberid_date time
-    val rowkey =  uberp.cid + "_" + uberp.base + "_" + uberp.dt
+    val rowkey = uberp.cid + "_" + uberp.base + "_" + uberp.dt
     val put = new Put(Bytes.toBytes(rowkey))
     // add to column family data, column data values to put object 
     put.addColumn(cfDataBytes, colLatBytes, Bytes.toBytes(uberp.lon))
@@ -48,7 +50,15 @@ object SparkKafkaConsumerWriteHBase {
       System.err.println("Usage: SparkKafkaConsumerWriteHBase <topic consume> <mapr-db table> ")
       System.exit(1)
     }
-
+    val schema = StructType(Array(
+      StructField("dt", TimestampType, true),
+      StructField("lat", DoubleType, true),
+      StructField("lon", DoubleType, true),
+      StructField("cid", IntegerType, true),
+      StructField("clat", DoubleType, true),
+      StructField("clon", DoubleType, true),
+      StructField("base", StringType, true)
+    ))
     val groupId = "testgroup"
     val offsetReset = "earliest"
     val pollTimeout = "5000"
@@ -65,7 +75,6 @@ object SparkKafkaConsumerWriteHBase {
     val hbaseContext = new HBaseContext(sc, config)
 
     val topicsSet = topicc.split(",").toSet
-
     val kafkaParams = Map[String, String](
       ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> brokers,
       ConsumerConfig.GROUP_ID_CONFIG -> groupId,
@@ -84,12 +93,25 @@ object SparkKafkaConsumerWriteHBase {
     )
     // get the message value from message key value pair
     val valuesDStream = messagesDStream.map(_.value())
-    
+
     System.out.println("received message stream")
     valuesDStream.count
     valuesDStream.print
-    
-     //convert each text message to an HBase Put and write to HBase
+    valuesDStream.foreachRDD { (rdd: RDD[String], time: Time) =>
+      // There exists at least one element in RDD
+      if (!rdd.isEmpty) {
+        val spark = SparkSession.builder.config(rdd.sparkContext.getConf).getOrCreate()
+        import spark.implicits._
+        import org.apache.spark.sql.functions._
+        val df: Dataset[UberC] = spark.read.schema(schema).json(rdd).as[UberC]
+        df.show
+        df.createOrReplaceTempView("uber")
+
+        df.groupBy("cid").count().show()
+        spark.sql("SELECT hour(uber.dt) as hr,count(cid) as ct FROM uber group By hour(uber.dt)").show
+      }
+    }
+    //convert each text message to an HBase Put and write to HBase
     hbaseContext.streamBulkPut[String](
       valuesDStream,
       TableName.valueOf(tableName),

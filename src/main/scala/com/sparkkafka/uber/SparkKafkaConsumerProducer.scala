@@ -139,7 +139,7 @@ object SparkKafkaConsumerProducer extends Serializable {
         
         // get cluster categories from  model
         val categories = model.transform(df2)
-        categories.show
+      //  categories.show
         categories.createOrReplaceTempView("uber")
 
         // select values to join with cluster centers

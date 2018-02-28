@@ -10,6 +10,7 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.sql._
 
 import org.apache.spark.streaming.{ Seconds, StreamingContext, Time }
+
 import org.apache.spark.streaming.kafka09.{ ConsumerStrategies, KafkaUtils, LocationStrategies }
 import org.apache.spark.streaming.kafka.producer._
 
@@ -19,7 +20,7 @@ import org.apache.spark.streaming.kafka.producer._
 object SparkKafkaConsumer {
 case class UberC(dt: String, lat: Double, lon: Double, cid: Integer, clat: Double, clon: Double, base: String) extends Serializable
   def main(args: Array[String]) = {
-    if (args.length < 1) {
+    if (args.length ==2 ) {
       System.err.println("Usage: SparkKafkaConsumer <topic consume> ")
       System.exit(1)
     }
@@ -78,21 +79,18 @@ case class UberC(dt: String, lat: Double, lon: Double, cid: Integer, clat: Doubl
         df.show
         df.createOrReplaceTempView("uber")
 
-        df.groupBy("cid").count().show()
+  //      df.groupBy("cid").count().show()
 
         spark.sql("select cid, count(cid) as count from uber group by cid").show
 
-        spark.sql("SELECT hour(uber.dt) as hr,count(cid) as ct FROM uber group By hour(uber.dt)").show
-
-        df.groupBy("cid").count().show()
+   //     spark.sql("SELECT hour(uber.dt) as hr,count(cid) as ct FROM uber group By hour(uber.dt)").show
 
         val countsDF = df.groupBy($"cid", window($"dt", "1 hour")).count()
         countsDF.createOrReplaceTempView("uber_counts")
 
-        spark.sql("select cid, sum(count) as total_count from uber_counts group by cid").show
-        //spark.sql("sql select cid, date_format(window.end, "MMM-dd HH:mm") as dt, count from uber_counts order by dt, cid").show
-
-        spark.sql("select cid, count(cid) as count from uber group by cid").show
+   //     spark.sql("select cid, sum(count) as total_count from uber_counts group by cid").show
+   
+    //    spark.sql("select cid, count(cid) as count from uber group by cid").show
 
         spark.sql("SELECT hour(uber.dt) as hr,count(cid) as ct FROM uber group By hour(uber.dt)").show
       }
